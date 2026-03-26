@@ -1,80 +1,190 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <title>Gra muzyczna</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #111;
-      color: #fff;
-    }
-    input {
-      padding: 10px;
-      width: 300px;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px;
-      margin-left: 10px;
-      cursor: pointer;
-    }
-    table {
-      margin: 20px auto;
-      border-collapse: collapse;
-      width: 80%;
-    }
-    th, td {
-      border: 1px solid #444;
-      padding: 10px;
-    }
-    .green { background: #2ecc71; }
-    .yellow { background: #f1c40f; color: black; }
-    .gray { background: #333; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gra muzyczna</title>
+<style>
+body {
+  font-family: Arial;
+  background:#111;
+  color:#fff;
+  text-align:center;
+  margin:0;
+}
 
-    /* Popup styles */
-    #popup {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: #222;
-      padding: 20px 40px;
-      border: 2px solid #2ecc71;
-      color: #fff;
-      font-size: 20px;
-      display: none;
-      z-index: 1000;
-      border-radius: 10px;
-    }
-  </style>
+.container {
+  max-width:800px;
+  margin:auto;
+  padding:20px;
+}
+
+h1 { margin-bottom:10px; }
+
+input {
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  border-radius:8px;
+  border:none;
+}
+
+button {
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:8px;
+  background:#2ecc71;
+  color:#fff;
+  font-size:16px;
+}
+
+#suggestionsBox {
+  background:#222;
+  border-radius:8px;
+  margin-top:5px;
+}
+
+.suggestion {
+  padding:10px;
+  cursor:pointer;
+}
+.suggestion:hover { background:#333; }
+
+.table-wrapper {
+  overflow-x:auto;
+  margin-top:20px;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+}
+
+th, td {
+  border:1px solid #444;
+  padding:10px;
+  text-align:center;
+}
+
+.album-cell {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+.album-cell img {
+  width:40px;
+  height:40px;
+  border-radius:6px;
+}
+
+.green { background:#2ecc71; }
+.yellow { background:#f1c40f; color:black; }
+.gray { background:#333; }
+
+#popup {
+  position:fixed;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:#222;
+  padding:20px 30px;
+  border-radius:10px;
+  display:none;
+  z-index:1000;
+}
+
+#overlay {
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  backdrop-filter: blur(6px);
+  background:rgba(0,0,0,0.6);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+
+#menu {
+  background:#222;
+  padding:30px;
+  border-radius:12px;
+}
+
+/* MOBILE */
+@media (max-width:600px) {
+  th, td { font-size:12px; padding:6px; }
+  .album-cell img { width:28px; height:28px; }
+  h1 { font-size:20px; }
+}
+</style>
 </head>
 <body>
 
-<h1>Zgadnij piosenkę</h1>
+<div id="overlay">
+  <div id="menu">
+    <h2>Instrukcja</h2>
+    <p>Zgadnij piosenkę w 8 próbach.</p>
+    <button onclick="startGame('easy')">Łatwy</button>
+    <button onclick="startGame('hard')">Trudny</button>
+  </div>
+</div>
 
-<input type="text" id="search" placeholder="Wpisz tytuł..." list="suggestions">
-<datalist id="suggestions"></datalist>
-<button onclick="guessSong()">Zgadnij</button>
+<div class="container">
+  <h1>Zgadnij piosenkę</h1>
 
-<table>
-  <thead>
-    <tr>
-      <th>Piosenka</th>
-      <th>Album</th>
-      <th>Nr</th>
-      <th>Długość</th>
-      <th>Goście</th>
-    </tr>
-  </thead>
-  <tbody id="tableBody"></tbody>
-</table>
+  <input id="search" placeholder="Wpisz tytuł...">
+  <div id="suggestionsBox"></div>
+  <button onclick="guessSong()">Zgadnij</button>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Piosenka</th>
+          <th>Album</th>
+          <th>Nr</th>
+          <th>Długość</th>
+          <th>Goście</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
 
 <div id="popup"></div>
 
 <script>
-const songs = [
+let songs = [];
+let target;
+let attempts = 0;
+
+const albumCovers = {
+  'Trójkąt Warszawski':'cover1.jpg',
+  'Umowa o Dzieło':'cover2.jpg',
+  'Wosk':'cover3.jpg',
+  'Marmur':'cover4.jpg',
+  'Szprycer':'cover5.jpg',
+  'Soma 0,5 mg':'cover6.jpg',
+  '0,25 mg':'cover7.jpg',
+  'Café Belga':'cover8.jpg',
+  'Flagey EP':'cover9.jpg',
+  'Pocztówka z WWA':'cover10.jpg',
+  'Jarmark':'cover11.jpg',
+  'Europa':'cover12.jpg',
+  '1‑800‑OŚWIECENIE':'cover13.jpg',
+  'Latarnie wszędzie dawno zgasły':'cover14.jpg',
+  'Who Killed JFK?':'cover15.jpg',
+  'Young Hems':'cover16.jpg',
+};
+
+function startGame(mode){
+  if(mode==='easy'){
+    songs=[
   { title: "Szlugi i kalafiory", album: "Trójkąt Warszawski", year: 2014, track: 1, length: 186, features: "Brak" },
   { title: "Marsz, marsz", album: "Trójkąt Warszawski", year: 2014, track: 2, length: 231, features: "Brak" },
   { title: "Wszystko jedno", album: "Trójkąt Warszawski", year: 2014, track: 3, length: 311, features: "Brak" },
@@ -90,207 +200,379 @@ const songs = [
   { title: "Awizo", album: "Umowa o Dzieło", year: 2015, track: 6, length: 260, features: "Brak" },
   { title: "Białkoholicy", album: "Umowa o Dzieło", year: 2015, track: 7, length: 282, features: "Brak" },
   { title: "100 kmh", album: "Umowa o Dzieło", year: 2015, track: 8, length: 119, features: "Brak" },
-  { title: "Nostalgia", album: "Szprycer", year: 2017, track: 1, length: 229, features: "Brak" },
-  { title: "Chodź", album: "Szprycer", year: 2017, track: 2, length: 209, features: "Brak" },
-  { title: "Tlen", album: "Szprycer", year: 2017, track: 3, length: 282, features: "Brak" },
   { title: "Wosk", album: "Wosk", year: 2016, track: 1, length: 233, features: "Brak" },
   { title: "BXL", album: "Wosk", year: 2016, track: 2, length: 232, features: "Brak" },
   { title: "Szczerze", album: "Wosk", year: 2016, track: 3, length: 201, features: "Brak" },
   { title: "Wiatr", album: "Wosk", year: 2016, track: 4, length: 221, features: "Brak" },
   { title: "515", album: "Wosk", year: 2016, track: 5, length: 191, features: "Brak" },
   { title: "Koła", album: "Wosk", year: 2016, track: 6, length: 241, features: "Dawid Podsiadło" },
-  { title: "Marmur", album: "Marmur", year: 2016, track: 1, length: 310, features: "Brak" },
-  { title: "Witaj w Hotelu Marmur", album: "Marmur", year: 2016, track: 2, length: 50, features: "Brak" },
-  { title: "Żyrandol", album: "Marmur", year: 2016, track: 3, length: 231, features: "Brak" },
-  { title: "Krwawa jesień", album: "Marmur", year: 2016, track: 4, length: 263, features: "Brak" },
-  { title: "Grubo-chude psy", album: "Marmur", year: 2016, track: 5, length: 170, features: "Brak" },
-  { title: "Portier!", album: "Marmur", year: 2016, track: 6, length: 51, features: "Brak" },
-  { title: "Mgła I (Siwe włosy)", album: "Marmur", year: 2016, track: 7, length: 234, features: "Brak" },
-  { title: "Mgła II (Mówisz, masz)", album: "Marmur", year: 2016, track: 8, length: 223, features: "Brak" },
-  { title: "Świat jest WFem", album: "Marmur", year: 2016, track: 9, length: 208, features: "Brak" },
-  { title: "Świecące prostokąty", album: "Marmur", year: 2016, track: 10, length: 257, features: "Brak" },
-  { title: "Tsunami blond", album: "Marmur", year: 2016, track: 11, length: 176, features: "Brak" },
-  { title: "Ślepe sumy", album: "Marmur", year: 2016, track: 12, length: 216, features: "Brak" },
-  { title: "Żywot", album: "Marmur", year: 2016, track: 13, length: 315, features: "Brak" },
-  { title: "Ściany mają uszy", album: "Marmur", year: 2016, track: 14, length: 234, features: "Ras" },
-  { title: "Jak cień", album: "Marmur", year: 2016, track: 15, length: 39, features: "Brak" },
-  { title: "To by było na tyle", album: "Marmur", year: 2016, track: 16, length: 246, features: "Brak" },
-  { title: "Deszcz na betonie (?)", album: "Marmur", year: 2016, track: 17, length: 233, features: "Brak" },
-  { title: "Nostalgia", album: "Szprycer", year: 2017, track: 1, length: 229, features: "Brak" },
-  { title: "Chodź", album: "Szprycer", year: 2017, track: 2, length: 209, features: "Brak" },
-  { title: "Tlen", album: "Szprycer", year: 2017, track: 3, length: 282, features: "Brak" },
-  { title: "Głupi byt", album: "Szprycer", year: 2017, track: 4, length: 250, features: "Brak" },
-  { title: "Dele", album: "Szprycer", year: 2017, track: 5, length: 208, features: "Brak" },
-  { title: "I.S.W.T.", album: "Szprycer", year: 2017, track: 6, length: 248, features: "Brak" },
-  { title: "35", album: "Szprycer", year: 2017, track: 7, length: 145, features: "Brak" },
-  { title: "Karimata (Mute)", album: "Szprycer", year: 2017, track: 8, length: 306, features: "Brak" },
-  { title: "Saldo '07", album: "Szprycer", year: 2017, track: 9, length: 224, features: "Brak" },
-  { title: "Intro", album: "Soma 0,5 mg", year: 2018, track: 1, length: 148, features: "Quebonafide" },
-  { title: "Metallica 808", album: "Soma 0,5 mg", year: 2018, track: 2, length: 188, features: "Quebonafide" },
-  { title: "Art-B", album: "Soma 0,5 mg", year: 2018, track: 3, length: 199, features: "Quebonafide" },
-  { title: "Ekodiesel", album: "Soma 0,5 mg", year: 2018, track: 4, length: 218, features: "Quebonafide" },
-  { title: "Wiem", album: "Soma 0,5 mg", year: 2018, track: 5, length: 221, features: "Quebonafide" },
-  { title: "Kryptowaluty", album: "Soma 0,5 mg", year: 2018, track: 6, length: 274, features: "Quebonafide" },
-  { title: "PIN", album: "Soma 0,5 mg", year: 2018, track: 7, length: 215, features: "Quebonafide" },
-  { title: "8 Kobiet", album: "Soma 0,5 mg", year: 2018, track: 8, length: 199, features: "Quebonafide" },
-  { title: "Tamagotchi", album: "Soma 0,5 mg", year: 2018, track: 9, length: 201, features: "Quebonafide" },
-  { title: "Nóż", album: "Soma 0,5 mg", year: 2018, track: 10, length: 205, features: "Quebonafide" },
-  { title: "Visa", album: "Soma 0,5 mg", year: 2018, track: 11, length: 208, features: "Quebonafide" },
-  { title: "Mleko & Miód", album: "Soma 0,5 mg", year: 2018, track: 12, length: 207, features: "Quebonafide" },
-  { title: "Giro d'Italia", album: "Soma 0,5 mg", year: 2018, track: 13, length: 179, features: "Quebonafide" },
-  { title: "Sectumsempra", album: "Soma 0,5 mg", year: 2018, track: 14, length: 212, features: "Quebonafide" },
-  { title: "Soma", album: "Soma 0,5 mg", year: 2018, track: 15, length: 179, features: "Quebonafide" },
-  { title: "Leonardo", album: "0,25 mg", year: 2019, track: 1, length: 174, features: "Quebonafide" },
-  { title: "TLC", album: "0,25 mg", year: 2019, track: 2, length: 198, features: "Quebonafide" },
-  { title: "Benevento", album: "0,25 mg", year: 2019, track: 3, length: 182, features: "Quebonafide" },
-  { title: "C3PO", album: "0,25 mg", year: 2019, track: 4, length: 198, features: "Quebonafide" },
-  { title: "8 Kobiet (Remix)", album: "0,25 mg", year: 2019, track: 5, length: 270, features: "Quebonafide, Bedoes" },
-  { title: "Visa (Remix)", album: "0,25 mg", year: 2019, track: 6, length: 223, features: "Quebonafide, KęKę" },
-  { title: "Ekodiesel (Remix)", album: "0,25 mg", year: 2019, track: 7, length: 300, features: "Quebonafide, Paluch" },
-  { title: "Wiem (Remix)", album: "0,25 mg", year: 2019, track: 8, length: 289, features: "Quebonafide, Kaz Bałagane" },
-  { title: "Tamagotchi (Remix)", album: "0,25 mg", year: 2019, track: 9, length: 202, features: "Quebonafide, Dawid Podsiadło" },
-  { title: "Moje demony uciekły na urlop", album: "0,25 mg", year: 2019, track: 10, length: 279, features: "Quebonafide, Białas" },
-  { title: "Outro", album: "0,25 mg", year: 2019, track: 11, length: 137, features: "Quebonafide" },
-  { title: "Café Belga", album: "Café Belga", year: 2020, track: 1, length: 249, features: "Brak" },
-  { title: "ZTM", album: "Café Belga", year: 2020, track: 2, length: 280, features: "Brak" },
-  { title: "Wszystko na niby", album: "Café Belga", year: 2020, track: 3, length: 258, features: "Brak" },
-  { title: "Reżyseria: Kubrick", album: "Café Belga", year: 2020, track: 4, length: 211, features: "Brak" },
-  { title: "2031", album: "Café Belga", year: 2020, track: 5, length: 299, features: "Brak" },
-  { title: "Fiji", album: "Café Belga", year: 2020, track: 6, length: 242, features: "Brak" },
-  { title: "Abonent jest czasowo niedostępny", album: "Café Belga", year: 2020, track: 7, length: 274, features: "Brak" },
-  { title: "Motorola", album: "Café Belga", year: 2020, track: 8, length: 191, features: "Brak" },
-  { title: "Modigliani", album: "Café Belga", year: 2020, track: 9, length: 230, features: "Brak" },
-  { title: "Adieu", album: "Café Belga", year: 2020, track: 10, length: 287, features: "Brak" },
-  { title: "4 AM in Girona", album: "Café Belga", year: 2020, track: 11, length: 188, features: "Brak" },
-  { title: "Bakayoko", album: "Flagey EP", year: 2021, track: 1, length: 218, features: "Brak" },
-  { title: "Pokédex", album: "Flagey EP", year: 2021, track: 2, length: 214, features: "Otsochodzi" },
-  { title: "Anja", album: "Flagey EP", year: 2021, track: 3, length: 189, features: "Brak" },
-  { title: "Czarna kawa czeka", album: "Flagey EP", year: 2021, track: 4, length: 209, features: "Brak" },
-  { title: "Italodisco", album: "Flagey EP", year: 2021, track: 5, length: 175, features: "Brak" },
-  { title: "Człowiek z dziurą zamiast krtani", album: "Pocztówka z WWA", year: 2022, track: 1, length: 248, features: "Brak" },
-  { title: "Antysmogowa maska w moim carry-on baggage", album: "Pocztówka z WWA", year: 2022, track: 2, length: 243, features: "Pezet" },
-  { title: "Leci nowy Future", album: "Pocztówka z WWA", year: 2022, track: 3, length: 220, features: "Brak" },
-  { title: "W piątki leżę w wannie", album: "Pocztówka z WWA", year: 2022, track: 4, length: 221, features: "Dawid Podsiadło" },
-  { title: "WWA VHS", album: "Pocztówka z WWA", year: 2022, track: 5, length: 282, features: "Ras" },
-  { title: "Wytrawne (z nutą desperacji)", album: "Pocztówka z WWA", year: 2022, track: 6, length: 191, features: "Brak" },
-  { title: "Wujek dobra rada", album: "Pocztówka z WWA", year: 2022, track: 7, length: 174, features: "Brak" },
-  { title: "Tijuana", album: "Pocztówka z WWA", year: 2022, track: 8, length: 197, features: "Kizo" },
-  { title: "Sanatorium", album: "Pocztówka z WWA", year: 2022, track: 9, length: 274, features: "Dawid Podsiadło, Rosalie." },
-  { title: "Alert RCB", album: "Pocztówka z WWA", year: 2022, track: 10, length: 199, features: "schafter" },
-  { title: "Kabriolety", album: "Pocztówka z WWA", year: 2022, track: 11, length: 328, features: "Brak" },
-  { title: "Łańcuch I: Kiosk", album: "Jarmark", year: 2023, track: 1, length: 142, features: "Artur Rojek" },
-  { title: "Panie, to Wyście!", album: "Jarmark", year: 2023, track: 2, length: 225, features: "Brak" },
-  { title: "Polskie Tango", album: "Jarmark", year: 2023, track: 3, length: 183, features: "Brak" },
-  { title: "Influenza", album: "Jarmark", year: 2023, track: 4, length: 268, features: "Gruby Mielzky" },
-  { title: "Nie Mam Czasu", album: "Jarmark", year: 2023, track: 5, length: 202, features: "CatchUp" },
-  { title: "Łańcuch II: Korek", album: "Jarmark", year: 2023, track: 6, length: 142, features: "Artur Rojek" },
-  { title: "Dwuzłotówki Dancing", album: "Jarmark", year: 2023, track: 7, length: 284, features: "Brak" },
-  { title: "POL Smoke", album: "Jarmark", year: 2023, track: 8, length: 213, features: "Brak" },
-  { title: "W.N.P.", album: "Jarmark", year: 2023, track: 9, length: 203, features: "Brak" },
-  { title: "1990s Utopia", album: "Jarmark", year: 2023, track: 10, length: 240, features: "Kacha z Coals" },
-  { title: "Szczękościsk", album: "Jarmark", year: 2023, track: 11, length: 238, features: "Brak" },
-  { title: "Łańcuch III: Korpo", album: "Jarmark", year: 2023, track: 12, length: 145, features: "Artur Rojek" },
-  { title: "Luxembourg", album: "Europa", year: 2024, track: 1, length: 196, features: "Brak" },
-  { title: "Grand Prix", album: "Europa", year: 2024, track: 2, length: 184, features: "Brak" },
-  { title: "Europa", album: "Europa", year: 2024, track: 3, length: 198, features: "Bedoes" },
-  { title: "Pireneje", album: "Europa", year: 2024, track: 4, length: 215, features: "Brak" },
-  { title: "Nie Ufam Sobie Sam", album: "Europa", year: 2024, track: 5, length: 155, features: "Brak" },
-  { title: "Big Pharma", album: "Europa", year: 2024, track: 6, length: 207, features: "Brak" },
-  { title: "Sztylet", album: "Europa", year: 2024, track: 7, length: 175, features: "Brak" },
-  { title: "Ortalion", album: "Europa", year: 2024, track: 8, length: 232, features: "Brak" },
-  { title: "WWA NIE Berlin", album: "Europa", year: 2024, track: 9, length: 220, features: "Szpaku" },
-  { title: "Pieniądz I Terror", album: "Europa", year: 2024, track: 10, length: 213, features: "OKI" },
-  { title: "Na Paryskie Getto Pada Deszcz", album: "Europa", year: 2024, track: 11, length: 222, features: "Borucci" },
-  { title: "Michael Essien Birthday Party", album: "Europa", year: 2024, track: 12, length: 257, features: "Brak" },
-  { title: "Toskania Outro", album: "Europa", year: 2024, track: 13, length: 307, features: "Brak" },
-  { title: "1‑800‑OŚWIECENIE", album: "1‑800‑OŚWIECENIE", year: 2025, track: 2, length: 170, features: "Brak" },
-  { title: "Cichosza", album: "1‑800‑OŚWIECENIE", year: 2025, track: 4, length: 206, features: "Otsochodzi, Zeppy Zep" },
-  { title: "Gelato", album: "1‑800‑OŚWIECENIE", year: 2025, track: 6, length: 195, features: "Brak" },
-  { title: "Może To Coś Zmieni?", album: "1‑800‑OŚWIECENIE", year: 2025, track: 8, length: 188, features: "Brak" },
-  { title: "Pakiet Platinium", album: "1‑800‑OŚWIECENIE", year: 2025, track: 9, length: 215, features: "Brak" },
-  { title: "Makarena Freestyle", album: "1‑800‑OŚWIECENIE", year: 2025, track: 11, length: 208, features: "Brak" },
-  { title: "Mix Sałat", album: "1‑800‑OŚWIECENIE", year: 2025, track: 13, length: 210, features: "Daria Zawiałow" },
-  { title: "Codziennie", album: "1‑800‑OŚWIECENIE", year: 2025, track: 15, length: 180, features: "Brak" },
-  { title: "1000 Dni Freestyle", album: "1‑800‑OŚWIECENIE", year: 2025, track: 17, length: 210, features: "Brak" },
-  { title: "Nametag", album: "1‑800‑OŚWIECENIE", year: 2025, track: 19, length: 234, features: "schafter, OKI" },
-  { title: "Całe Lata", album: "1‑800‑OŚWIECENIE", year: 2025, track: 21, length: 240, features: "Dawid Podsiadło" },
-  { title: "Niedziela", album: "1‑800‑OŚWIECENIE", year: 2025, track: 23, length: 200, features: "schafter" },
-  { title: "Main Stage Freestyle", album: "1‑800‑OŚWIECENIE", year: 2025, track: 25, length: 220, features: "Brak" },
-  { title: "EINECEIWŚO 008‑1", album: "1‑800‑OŚWIECENIE", year: 2025, track: 27, length: 260, features: "Brak" },
-  { title: "Plac Trzech Krzyży", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 2, length: 206, features: "The Returners" },
-  { title: "Latarnie wszędzie dawno zgasły", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 3, length: 211, features: "Brak" },
-  { title: "Pustoszeją sale kinowe", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 4, length: 172, features: "The Returners" },
-  { title: "Tramwaje", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 6, length: 167, features: "Brak" },
-  { title: "Odtrutka", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 7, length: 229, features: "The Returners" },
-  { title: "Trzykropki", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 8, length: 244, features: "Livka" },
-  { title: "Fotomodelki", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 10, length: 202, features: "The Returners" },
-  { title: "Zakochałem się pod apteką", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 11, length: 261, features: "Livka" },
-  { title: "Bez stresu", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 12, length: 256, features: "Livka" },
-  { title: "Frascati", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 14, length: 177, features: "Livka" },
-  { title: "Ratunku!", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 15, length: 224, features: "The Returners" },
-  { title: "Ostatni?", album: "Latarnie wszędzie dawno zgasły", year: 2026, track: 16, length: 259, features: "Brak" }
-];
+  { title: "Marmur", album: "Marmur", year: 2017, track: 1, length: 310, features: "Brak" },
+  { title: "Witaj w Hotelu Marmur", album: "Marmur", year: 2017, track: 2, length: 50, features: "Brak" },
+  { title: "Żyrandol", album: "Marmur", year: 2017, track: 3, length: 231, features: "Brak" },
+  { title: "Krwawa jesień", album: "Marmur", year: 2017, track: 4, length: 263, features: "Brak" },
+  { title: "Grubo-chude psy", album: "Marmur", year: 2017, track: 5, length: 170, features: "Brak" },
+  { title: "Portier!", album: "Marmur", year: 2017, track: 6, length: 51, features: "Brak" },
+  { title: "Mgła I (Siwe włosy)", album: "Marmur", year: 2017, track: 7, length: 234, features: "Brak" },
+  { title: "Mgła II (Mówisz, masz)", album: "Marmur", year: 2017, track: 8, length: 223, features: "Brak" },
+  { title: "Świat jest WFem", album: "Marmur", year: 2017, track: 9, length: 208, features: "Brak" },
+  { title: "Świecące prostokąty", album: "Marmur", year: 2017, track: 10, length: 257, features: "Brak" },
+  { title: "Tsunami blond", album: "Marmur", year: 2017, track: 11, length: 176, features: "Brak" },
+  { title: "Ślepe sumy", album: "Marmur", year: 2017, track: 12, length: 216, features: "Brak" },
+  { title: "Żywot", album: "Marmur", year: 2017, track: 13, length: 315, features: "Brak" },
+  { title: "Ściany mają uszy", album: "Marmur", year: 2017, track: 14, length: 234, features: "Ras" },
+  { title: "Jak cień", album: "Marmur", year: 2017, track: 15, length: 39, features: "Brak" },
+  { title: "To by było na tyle", album: "Marmur", year: 2017, track: 16, length: 246, features: "Brak" },
+  { title: "Deszcz na betonie (?)", album: "Marmur", year: 2017, track: 17, length: 233, features: "Brak" },
+  { title: "Nostalgia", album: "Szprycer", year: 2018, track: 1, length: 229, features: "Brak" },
+  { title: "Chodź", album: "Szprycer", year: 2018, track: 2, length: 209, features: "Brak" },
+  { title: "Tlen", album: "Szprycer", year: 2018, track: 3, length: 282, features: "Brak" },
+  { title: "Głupi byt", album: "Szprycer", year: 2018, track: 4, length: 250, features: "Brak" },
+  { title: "Dele", album: "Szprycer", year: 2018, track: 5, length: 208, features: "Brak" },
+  { title: "I.S.W.T.", album: "Szprycer", year: 2018, track: 6, length: 248, features: "Brak" },
+  { title: "35", album: "Szprycer", year: 2018, track: 7, length: 145, features: "Brak" },
+  { title: "Karimata (Mute)", album: "Szprycer", year: 2018, track: 8, length: 306, features: "Brak" },
+  { title: "Saldo '07", album: "Szprycer", year: 2018, track: 9, length: 224, features: "Brak" },
+  { title: "Intro", album: "Soma 0,5 mg", year: 2019, track: 1, length: 148, features: "Quebonafide" },
+  { title: "Metallica 808", album: "Soma 0,5 mg", year: 2019, track: 2, length: 188, features: "Quebonafide" },
+  { title: "Art-B", album: "Soma 0,5 mg", year: 2019, track: 3, length: 199, features: "Quebonafide" },
+  { title: "Ekodiesel", album: "Soma 0,5 mg", year: 2019, track: 4, length: 218, features: "Quebonafide" },
+  { title: "Wiem", album: "Soma 0,5 mg", year: 2019, track: 5, length: 221, features: "Quebonafide" },
+  { title: "Kryptowaluty", album: "Soma 0,5 mg", year: 2019, track: 6, length: 274, features: "Quebonafide" },
+  { title: "PIN", album: "Soma 0,5 mg", year: 2019, track: 7, length: 215, features: "Quebonafide" },
+  { title: "8 Kobiet", album: "Soma 0,5 mg", year: 2019, track: 8, length: 199, features: "Quebonafide" },
+  { title: "Tamagotchi", album: "Soma 0,5 mg", year: 2019, track: 9, length: 201, features: "Quebonafide" },
+  { title: "Nóż", album: "Soma 0,5 mg", year: 2019, track: 10, length: 205, features: "Quebonafide" },
+  { title: "Visa", album: "Soma 0,5 mg", year: 2019, track: 11, length: 208, features: "Quebonafide" },
+  { title: "Mleko & Miód", album: "Soma 0,5 mg", year: 2019, track: 12, length: 207, features: "Quebonafide" },
+  { title: "Giro d'Italia", album: "Soma 0,5 mg", year: 2019, track: 13, length: 179, features: "Quebonafide" },
+  { title: "Sectumsempra", album: "Soma 0,5 mg", year: 2019, track: 14, length: 212, features: "Quebonafide" },
+  { title: "Soma", album: "Soma 0,5 mg", year: 2019, track: 15, length: 179, features: "Quebonafide" },
+  { title: "Leonardo", album: "0,25 mg", year: 2020, track: 1, length: 174, features: "Quebonafide" },
+  { title: "TLC", album: "0,25 mg", year: 2020, track: 2, length: 198, features: "Quebonafide" },
+  { title: "Benevento", album: "0,25 mg", year: 2020, track: 3, length: 182, features: "Quebonafide" },
+  { title: "C3PO", album: "0,25 mg", year: 2020, track: 4, length: 198, features: "Quebonafide" },
+  { title: "8 Kobiet (Remix)", album: "0,25 mg", year: 2020, track: 5, length: 270, features: "Quebonafide, Bedoes" },
+  { title: "Visa (Remix)", album: "0,25 mg", year: 2020, track: 6, length: 223, features: "Quebonafide, KęKę" },
+  { title: "Ekodiesel (Remix)", album: "0,25 mg", year: 2020, track: 7, length: 300, features: "Quebonafide, Paluch" },
+  { title: "Wiem (Remix)", album: "0,25 mg", year: 2020, track: 8, length: 289, features: "Quebonafide, Kaz Bałagane" },
+  { title: "Tamagotchi (Remix)", album: "0,25 mg", year: 2020, track: 9, length: 202, features: "Quebonafide, Dawid Podsiadło" },
+  { title: "Moje demony uciekły na urlop", album: "0,25 mg", year: 2020, track: 10, length: 279, features: "Quebonafide, Białas" },
+  { title: "Outro", album: "0,25 mg", year: 2020, track: 11, length: 137, features: "Quebonafide" },
+  { title: "Café Belga", album: "Café Belga", year: 2021, track: 1, length: 249, features: "Brak" },
+  { title: "ZTM", album: "Café Belga", year: 2021, track: 2, length: 280, features: "Brak" },
+  { title: "Wszystko na niby", album: "Café Belga", year: 2021, track: 3, length: 258, features: "Brak" },
+  { title: "Reżyseria: Kubrick", album: "Café Belga", year: 2021, track: 4, length: 211, features: "Brak" },
+  { title: "2031", album: "Café Belga", year: 2021, track: 5, length: 299, features: "Brak" },
+  { title: "Fiji", album: "Café Belga", year: 2021, track: 6, length: 242, features: "Brak" },
+  { title: "Abonent jest czasowo niedostępny", album: "Café Belga", year: 2021, track: 7, length: 274, features: "Brak" },
+  { title: "Motorola", album: "Café Belga", year: 2021, track: 8, length: 191, features: "Brak" },
+  { title: "Modigliani", album: "Café Belga", year: 2021, track: 9, length: 230, features: "Brak" },
+  { title: "Adieu", album: "Café Belga", year: 2021, track: 10, length: 287, features: "Brak" },
+  { title: "4 AM in Girona", album: "Café Belga", year: 2021, track: 11, length: 188, features: "Brak" },
+  { title: "Bakayoko", album: "Flagey EP", year: 2022, track: 1, length: 218, features: "Brak" },
+  { title: "Pokédex", album: "Flagey EP", year: 2022, track: 2, length: 214, features: "Otsochodzi" },
+  { title: "Anja", album: "Flagey EP", year: 2022, track: 3, length: 189, features: "Brak" },
+  { title: "Czarna kawa czeka", album: "Flagey EP", year: 2022, track: 4, length: 209, features: "Brak" },
+  { title: "Italodisco", album: "Flagey EP", year: 2022, track: 5, length: 175, features: "Brak" },
+  { title: "Człowiek z dziurą zamiast krtani", album: "Pocztówka z WWA", year: 2023, track: 1, length: 248, features: "Brak" },
+  { title: "Antysmogowa maska w moim carry-on baggage", album: "Pocztówka z WWA", year: 2023, track: 2, length: 243, features: "Pezet" },
+  { title: "Leci nowy Future", album: "Pocztówka z WWA", year: 2023, track: 3, length: 220, features: "Brak" },
+  { title: "W piątki leżę w wannie", album: "Pocztówka z WWA", year: 2023, track: 4, length: 221, features: "Dawid Podsiadło" },
+  { title: "WWA VHS", album: "Pocztówka z WWA", year: 2023, track: 5, length: 282, features: "Ras" },
+  { title: "Wytrawne (z nutą desperacji)", album: "Pocztówka z WWA", year: 2023, track: 6, length: 191, features: "Brak" },
+  { title: "Wujek dobra rada", album: "Pocztówka z WWA", year: 2023, track: 7, length: 174, features: "Brak" },
+  { title: "Tijuana", album: "Pocztówka z WWA", year: 2023, track: 8, length: 197, features: "Kizo" },
+  { title: "Sanatorium", album: "Pocztówka z WWA", year: 2023, track: 9, length: 274, features: "Dawid Podsiadło, Rosalie." },
+  { title: "Alert RCB", album: "Pocztówka z WWA", year: 2023, track: 10, length: 199, features: "schafter" },
+  { title: "Kabriolety", album: "Pocztówka z WWA", year: 2023, track: 11, length: 328, features: "Brak" },
+  { title: "Łańcuch I: Kiosk", album: "Jarmark", year: 2024, track: 1, length: 142, features: "Artur Rojek" },
+  { title: "Panie, to Wyście!", album: "Jarmark", year: 2024, track: 2, length: 225, features: "Brak" },
+  { title: "Polskie Tango", album: "Jarmark", year: 2024, track: 3, length: 183, features: "Brak" },
+  { title: "Influenza", album: "Jarmark", year: 2024, track: 4, length: 268, features: "Gruby Mielzky" },
+  { title: "Nie Mam Czasu", album: "Jarmark", year: 2024, track: 5, length: 202, features: "CatchUp" },
+  { title: "Łańcuch II: Korek", album: "Jarmark", year: 2024, track: 6, length: 142, features: "Artur Rojek" },
+  { title: "Dwuzłotówki Dancing", album: "Jarmark", year: 2024, track: 7, length: 284, features: "Brak" },
+  { title: "POL Smoke", album: "Jarmark", year: 2024, track: 8, length: 213, features: "Brak" },
+  { title: "W.N.P.", album: "Jarmark", year: 2024, track: 9, length: 203, features: "Brak" },
+  { title: "1990s Utopia", album: "Jarmark", year: 2024, track: 10, length: 240, features: "Kacha z Coals" },
+  { title: "Szczękościsk", album: "Jarmark", year: 2024, track: 11, length: 238, features: "Brak" },
+  { title: "Łańcuch III: Korpo", album: "Jarmark", year: 2024, track: 12, length: 145, features: "Artur Rojek" },
+  { title: "Luxembourg", album: "Europa", year: 2025, track: 1, length: 196, features: "Brak" },
+  { title: "Grand Prix", album: "Europa", year: 2025, track: 2, length: 184, features: "Brak" },
+  { title: "Europa", album: "Europa", year: 2025, track: 3, length: 198, features: "Bedoes" },
+  { title: "Pireneje", album: "Europa", year: 2025, track: 4, length: 215, features: "Brak" },
+  { title: "Nie Ufam Sobie Sam", album: "Europa", year: 2025, track: 5, length: 155, features: "Brak" },
+  { title: "Big Pharma", album: "Europa", year: 2025, track: 6, length: 207, features: "Brak" },
+  { title: "Sztylet", album: "Europa", year: 2025, track: 7, length: 175, features: "Brak" },
+  { title: "Ortalion", album: "Europa", year: 2025, track: 8, length: 232, features: "Brak" },
+  { title: "WWA NIE Berlin", album: "Europa", year: 2025, track: 9, length: 220, features: "Szpaku" },
+  { title: "Pieniądz I Terror", album: "Europa", year: 2025, track: 10, length: 213, features: "OKI" },
+  { title: "Na Paryskie Getto Pada Deszcz", album: "Europa", year: 2025, track: 11, length: 222, features: "Borucci" },
+  { title: "Michael Essien Birthday Party", album: "Europa", year: 2025, track: 12, length: 257, features: "Brak" },
+  { title: "Toskania Outro", album: "Europa", year: 2025, track: 13, length: 307, features: "Brak" },
+  { title: "1‑800‑OŚWIECENIE", album: "1‑800‑OŚWIECENIE", year: 2026, track: 2, length: 170, features: "Brak" },
+  { title: "Cichosza", album: "1‑800‑OŚWIECENIE", year: 2026, track: 4, length: 206, features: "Otsochodzi, Zeppy Zep" },
+  { title: "Gelato", album: "1‑800‑OŚWIECENIE", year: 2026, track: 6, length: 195, features: "Brak" },
+  { title: "Może To Coś Zmieni?", album: "1‑800‑OŚWIECENIE", year: 2026, track: 8, length: 188, features: "Brak" },
+  { title: "Pakiet Platinium", album: "1‑800‑OŚWIECENIE", year: 2026, track: 9, length: 215, features: "Brak" },
+  { title: "Makarena Freestyle", album: "1‑800‑OŚWIECENIE", year: 2026, track: 11, length: 208, features: "Brak" },
+  { title: "Mix Sałat", album: "1‑800‑OŚWIECENIE", year: 2026, track: 13, length: 210, features: "Daria Zawiałow" },
+  { title: "Codziennie", album: "1‑800‑OŚWIECENIE", year: 2026, track: 15, length: 180, features: "Brak" },
+  { title: "1000 Dni Freestyle", album: "1‑800‑OŚWIECENIE", year: 2026, track: 17, length: 210, features: "Brak" },
+  { title: "Nametag", album: "1‑800‑OŚWIECENIE", year: 2026, track: 19, length: 234, features: "schafter, OKI" },
+  { title: "Całe Lata", album: "1‑800‑OŚWIECENIE", year: 2026, track: 21, length: 240, features: "Dawid Podsiadło" },
+  { title: "Niedziela", album: "1‑800‑OŚWIECENIE", year: 2026, track: 23, length: 200, features: "schafter" },
+  { title: "Main Stage Freestyle", album: "1‑800‑OŚWIECENIE", year: 2026, track: 25, length: 220, features: "Brak" },
+  { title: "EINECEIWŚO 008‑1", album: "1‑800‑OŚWIECENIE", year: 2026, track: 27, length: 260, features: "Brak" },
+  { title: "Plac Trzech Krzyży", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 2, length: 206, features: "The Returners" },
+  { title: "Latarnie wszędzie dawno zgasły", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 3, length: 211, features: "Brak" },
+  { title: "Pustoszeją sale kinowe", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 4, length: 172, features: "The Returners" },
+  { title: "Tramwaje", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 6, length: 167, features: "Brak" },
+  { title: "Odtrutka", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 7, length: 229, features: "The Returners" },
+  { title: "Trzykropki", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 8, length: 244, features: "Livka" },
+  { title: "Fotomodelki", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 10, length: 202, features: "The Returners" },
+  { title: "Zakochałem się pod apteką", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 11, length: 261, features: "Livka" },
+  { title: "Bez stresu", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 12, length: 256, features: "Livka" },
+  { title: "Frascati", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 14, length: 177, features: "Livka" },
+  { title: "Ratunku!", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 15, length: 224, features: "The Returners" },
+  { title: "Ostatni?", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 16, length: 259, features: "Brak" }
+    ];
+  }else{
+    songs=[
+  { title: "Nevermore", album: "Who Killed JFK?", year: 2011, track: 1, length: 153, features: "Brak" },
+  { title: "Twenty Two", album: "Who Killed JFK?", year: 2011, track: 2, length: 126, features: "Brak" },
+  { title: "Bonfire (Remix)", album: "Who Killed JFK?", year: 2011, track: 3, length: 197, features: "Brak" },
+  { title: "Twists", album: "Who Killed JFK?", year: 2011, track: 4, length: 166, features: "Brak" },
+  { title: "Such a Pretty Child", album: "Who Killed JFK?", year: 2011, track: 5, length: 213, features: "Brak" },
+  { title: "Stormtrooper with Horns", album: "Who Killed JFK?", year: 2011, track: 6, length: 244, features: "Brak" },
+  { title: "Redwinebeer", album: "Who Killed JFK?", year: 2011, track: 7, length: 219, features: "Brak" },
+  { title: "Not Like Hov", album: "Who Killed JFK?", year: 2011, track: 8, length: 206, features: "Brak" },
+  { title: "Larry David Flow", album: "Who Killed JFK?", year: 2011, track: 9, length: 201, features: "Brak" },
+  { title: "Krusty's Children", album: "Who Killed JFK?", year: 2011, track: 10, length: 150, features: "Brak" },
+  { title: "Gods, Mammals, Birds", album: "Who Killed JFK?", year: 2011, track: 11, length: 153, features: "Brak" },
+  { title: "Fake Tits/Ghosts", album: "Who Killed JFK?", year: 2011, track: 12, length: 153, features: "Brak" },
+  { title: "Brilliant", album: "Who Killed JFK?", year: 2011, track: 13, length: 154, features: "Brak" },
+  { title: "Booze To Glug", album: "Who Killed JFK?", year: 2011, track: 14, length: 226, features: "Brak" },
+  { title: "Odd Mammal", album: "Who Killed JFK?", year: 2011, track: 15, length: 110, features: "Brak" },
+  { title: "Off/On", album: "Who Killed JFK?", year: 2011, track: 16, length: 164, features: "Brak" },
+  { title: "Fuck Your List", album: "Young Hems", year: 2013, track: 1, length: 200, features: "Brak" },
+  { title: "Listening to Arctic Monkeys", album: "Young Hems", year: 2013, track: 2, length: 197, features: "Brak" },
+  { title: "22", album: "Young Hems", year: 2013, track: 3, length: 108, features: "Brak" },
+  { title: "Blueberries", album: "Young Hems", year: 2013, track: 4, length: 228, features: "Brak" },
+  { title: "Luck", album: "Young Hems", year: 2013, track: 5, length: 169, features: "Brak" },
+  { title: "Normal Man / Pop Vulture", album: "Young Hems", year: 2013, track: 6, length: 211, features: "Brak" },
+  { title: "Halle Berry", album: "Young Hems", year: 2013, track: 7, length: 198, features: "Brak" },
+  { title: "Chewbacca", album: "Young Hems", year: 2013, track: 8, length: 249, features: "Joe Pesci" }, 
+  { title: "Szlugi i kalafiory", album: "Trójkąt Warszawski", year: 2014, track: 1, length: 186, features: "Brak" },
+  { title: "Marsz, marsz", album: "Trójkąt Warszawski", year: 2014, track: 2, length: 231, features: "Brak" },
+  { title: "Wszystko jedno", album: "Trójkąt Warszawski", year: 2014, track: 3, length: 311, features: "Brak" },
+  { title: "Trójkąt", album: "Trójkąt Warszawski", year: 2014, track: 4, length: 327, features: "Brak" },
+  { title: "(przerywnik)", album: "Trójkąt Warszawski", year: 2014, track: 5, length: 133, features: "Brak" },
+  { title: "Mięso", album: "Trójkąt Warszawski", year: 2014, track: 6, length: 259, features: "Bebun" },
+  { title: "900729", album: "Trójkąt Warszawski", year: 2014, track: 7, length: 306, features: "Brak" },
+  { title: "Od zera", album: "Umowa o Dzieło", year: 2015, track: 1, length: 117, features: "Brak" },
+  { title: "A mówiłem Ci", album: "Umowa o Dzieło", year: 2015, track: 2, length: 339, features: "Brak" },
+  { title: "Następna stacja", album: "Umowa o Dzieło", year: 2015, track: 3, length: 252, features: "Brak" },
+  { title: "6 zer", album: "Umowa o Dzieło", year: 2015, track: 4, length: 237, features: "Brak" },
+  { title: "+4822", album: "Umowa o Dzieło", year: 2015, track: 5, length: 237, features: "Brak" },
+  { title: "Awizo", album: "Umowa o Dzieło", year: 2015, track: 6, length: 260, features: "Brak" },
+  { title: "Białkoholicy", album: "Umowa o Dzieło", year: 2015, track: 7, length: 282, features: "Brak" },
+  { title: "100 kmh", album: "Umowa o Dzieło", year: 2015, track: 8, length: 119, features: "Brak" },
+  { title: "Wosk", album: "Wosk", year: 2016, track: 1, length: 233, features: "Brak" },
+  { title: "BXL", album: "Wosk", year: 2016, track: 2, length: 232, features: "Brak" },
+  { title: "Szczerze", album: "Wosk", year: 2016, track: 3, length: 201, features: "Brak" },
+  { title: "Wiatr", album: "Wosk", year: 2016, track: 4, length: 221, features: "Brak" },
+  { title: "515", album: "Wosk", year: 2016, track: 5, length: 191, features: "Brak" },
+  { title: "Koła", album: "Wosk", year: 2016, track: 6, length: 241, features: "Dawid Podsiadło" },
+  { title: "Marmur", album: "Marmur", year: 2017, track: 1, length: 310, features: "Brak" },
+  { title: "Witaj w Hotelu Marmur", album: "Marmur", year: 2017, track: 2, length: 50, features: "Brak" },
+  { title: "Żyrandol", album: "Marmur", year: 2017, track: 3, length: 231, features: "Brak" },
+  { title: "Krwawa jesień", album: "Marmur", year: 2017, track: 4, length: 263, features: "Brak" },
+  { title: "Grubo-chude psy", album: "Marmur", year: 2017, track: 5, length: 170, features: "Brak" },
+  { title: "Portier!", album: "Marmur", year: 2017, track: 6, length: 51, features: "Brak" },
+  { title: "Mgła I (Siwe włosy)", album: "Marmur", year: 2017, track: 7, length: 234, features: "Brak" },
+  { title: "Mgła II (Mówisz, masz)", album: "Marmur", year: 2017, track: 8, length: 223, features: "Brak" },
+  { title: "Świat jest WFem", album: "Marmur", year: 2017, track: 9, length: 208, features: "Brak" },
+  { title: "Świecące prostokąty", album: "Marmur", year: 2017, track: 10, length: 257, features: "Brak" },
+  { title: "Tsunami blond", album: "Marmur", year: 2017, track: 11, length: 176, features: "Brak" },
+  { title: "Ślepe sumy", album: "Marmur", year: 2017, track: 12, length: 216, features: "Brak" },
+  { title: "Żywot", album: "Marmur", year: 2017, track: 13, length: 315, features: "Brak" },
+  { title: "Ściany mają uszy", album: "Marmur", year: 2017, track: 14, length: 234, features: "Ras" },
+  { title: "Jak cień", album: "Marmur", year: 2017, track: 15, length: 39, features: "Brak" },
+  { title: "To by było na tyle", album: "Marmur", year: 2017, track: 16, length: 246, features: "Brak" },
+  { title: "Deszcz na betonie (?)", album: "Marmur", year: 2017, track: 17, length: 233, features: "Brak" },
+  { title: "Nostalgia", album: "Szprycer", year: 2018, track: 1, length: 229, features: "Brak" },
+  { title: "Chodź", album: "Szprycer", year: 2018, track: 2, length: 209, features: "Brak" },
+  { title: "Tlen", album: "Szprycer", year: 2018, track: 3, length: 282, features: "Brak" },
+  { title: "Głupi byt", album: "Szprycer", year: 2018, track: 4, length: 250, features: "Brak" },
+  { title: "Dele", album: "Szprycer", year: 2018, track: 5, length: 208, features: "Brak" },
+  { title: "I.S.W.T.", album: "Szprycer", year: 2018, track: 6, length: 248, features: "Brak" },
+  { title: "35", album: "Szprycer", year: 2018, track: 7, length: 145, features: "Brak" },
+  { title: "Karimata (Mute)", album: "Szprycer", year: 2018, track: 8, length: 306, features: "Brak" },
+  { title: "Saldo '07", album: "Szprycer", year: 2018, track: 9, length: 224, features: "Brak" },
+  { title: "Intro", album: "Soma 0,5 mg", year: 2019, track: 1, length: 148, features: "Quebonafide" },
+  { title: "Metallica 808", album: "Soma 0,5 mg", year: 2019, track: 2, length: 188, features: "Quebonafide" },
+  { title: "Art-B", album: "Soma 0,5 mg", year: 2019, track: 3, length: 199, features: "Quebonafide" },
+  { title: "Ekodiesel", album: "Soma 0,5 mg", year: 2019, track: 4, length: 218, features: "Quebonafide" },
+  { title: "Wiem", album: "Soma 0,5 mg", year: 2019, track: 5, length: 221, features: "Quebonafide" },
+  { title: "Kryptowaluty", album: "Soma 0,5 mg", year: 2019, track: 6, length: 274, features: "Quebonafide" },
+  { title: "PIN", album: "Soma 0,5 mg", year: 2019, track: 7, length: 215, features: "Quebonafide" },
+  { title: "8 Kobiet", album: "Soma 0,5 mg", year: 2019, track: 8, length: 199, features: "Quebonafide" },
+  { title: "Tamagotchi", album: "Soma 0,5 mg", year: 2019, track: 9, length: 201, features: "Quebonafide" },
+  { title: "Nóż", album: "Soma 0,5 mg", year: 2019, track: 10, length: 205, features: "Quebonafide" },
+  { title: "Visa", album: "Soma 0,5 mg", year: 2019, track: 11, length: 208, features: "Quebonafide" },
+  { title: "Mleko & Miód", album: "Soma 0,5 mg", year: 2019, track: 12, length: 207, features: "Quebonafide" },
+  { title: "Giro d'Italia", album: "Soma 0,5 mg", year: 2019, track: 13, length: 179, features: "Quebonafide" },
+  { title: "Sectumsempra", album: "Soma 0,5 mg", year: 2019, track: 14, length: 212, features: "Quebonafide" },
+  { title: "Soma", album: "Soma 0,5 mg", year: 2019, track: 15, length: 179, features: "Quebonafide" },
+  { title: "Leonardo", album: "0,25 mg", year: 2020, track: 1, length: 174, features: "Quebonafide" },
+  { title: "TLC", album: "0,25 mg", year: 2020, track: 2, length: 198, features: "Quebonafide" },
+  { title: "Benevento", album: "0,25 mg", year: 2020, track: 3, length: 182, features: "Quebonafide" },
+  { title: "C3PO", album: "0,25 mg", year: 2020, track: 4, length: 198, features: "Quebonafide" },
+  { title: "8 Kobiet (Remix)", album: "0,25 mg", year: 2020, track: 5, length: 270, features: "Quebonafide, Bedoes" },
+  { title: "Visa (Remix)", album: "0,25 mg", year: 2020, track: 6, length: 223, features: "Quebonafide, KęKę" },
+  { title: "Ekodiesel (Remix)", album: "0,25 mg", year: 2020, track: 7, length: 300, features: "Quebonafide, Paluch" },
+  { title: "Wiem (Remix)", album: "0,25 mg", year: 2020, track: 8, length: 289, features: "Quebonafide, Kaz Bałagane" },
+  { title: "Tamagotchi (Remix)", album: "0,25 mg", year: 2020, track: 9, length: 202, features: "Quebonafide, Dawid Podsiadło" },
+  { title: "Moje demony uciekły na urlop", album: "0,25 mg", year: 2020, track: 10, length: 279, features: "Quebonafide, Białas" },
+  { title: "Outro", album: "0,25 mg", year: 2020, track: 11, length: 137, features: "Quebonafide" },
+  { title: "Café Belga", album: "Café Belga", year: 2021, track: 1, length: 249, features: "Brak" },
+  { title: "ZTM", album: "Café Belga", year: 2021, track: 2, length: 280, features: "Brak" },
+  { title: "Wszystko na niby", album: "Café Belga", year: 2021, track: 3, length: 258, features: "Brak" },
+  { title: "Reżyseria: Kubrick", album: "Café Belga", year: 2021, track: 4, length: 211, features: "Brak" },
+  { title: "2031", album: "Café Belga", year: 2021, track: 5, length: 299, features: "Brak" },
+  { title: "Fiji", album: "Café Belga", year: 2021, track: 6, length: 242, features: "Brak" },
+  { title: "Abonent jest czasowo niedostępny", album: "Café Belga", year: 2021, track: 7, length: 274, features: "Brak" },
+  { title: "Motorola", album: "Café Belga", year: 2021, track: 8, length: 191, features: "Brak" },
+  { title: "Modigliani", album: "Café Belga", year: 2021, track: 9, length: 230, features: "Brak" },
+  { title: "Adieu", album: "Café Belga", year: 2021, track: 10, length: 287, features: "Brak" },
+  { title: "4 AM in Girona", album: "Café Belga", year: 2021, track: 11, length: 188, features: "Brak" },
+  { title: "Bakayoko", album: "Flagey EP", year: 2022, track: 1, length: 218, features: "Brak" },
+  { title: "Pokédex", album: "Flagey EP", year: 2022, track: 2, length: 214, features: "Otsochodzi" },
+  { title: "Anja", album: "Flagey EP", year: 2022, track: 3, length: 189, features: "Brak" },
+  { title: "Czarna kawa czeka", album: "Flagey EP", year: 2022, track: 4, length: 209, features: "Brak" },
+  { title: "Italodisco", album: "Flagey EP", year: 2022, track: 5, length: 175, features: "Brak" },
+  { title: "Człowiek z dziurą zamiast krtani", album: "Pocztówka z WWA", year: 2023, track: 1, length: 248, features: "Brak" },
+  { title: "Antysmogowa maska w moim carry-on baggage", album: "Pocztówka z WWA", year: 2023, track: 2, length: 243, features: "Pezet" },
+  { title: "Leci nowy Future", album: "Pocztówka z WWA", year: 2023, track: 3, length: 220, features: "Brak" },
+  { title: "W piątki leżę w wannie", album: "Pocztówka z WWA", year: 2023, track: 4, length: 221, features: "Dawid Podsiadło" },
+  { title: "WWA VHS", album: "Pocztówka z WWA", year: 2023, track: 5, length: 282, features: "Ras" },
+  { title: "Wytrawne (z nutą desperacji)", album: "Pocztówka z WWA", year: 2023, track: 6, length: 191, features: "Brak" },
+  { title: "Wujek dobra rada", album: "Pocztówka z WWA", year: 2023, track: 7, length: 174, features: "Brak" },
+  { title: "Tijuana", album: "Pocztówka z WWA", year: 2023, track: 8, length: 197, features: "Kizo" },
+  { title: "Sanatorium", album: "Pocztówka z WWA", year: 2023, track: 9, length: 274, features: "Dawid Podsiadło, Rosalie." },
+  { title: "Alert RCB", album: "Pocztówka z WWA", year: 2023, track: 10, length: 199, features: "schafter" },
+  { title: "Kabriolety", album: "Pocztówka z WWA", year: 2023, track: 11, length: 328, features: "Brak" },
+  { title: "Łańcuch I: Kiosk", album: "Jarmark", year: 2024, track: 1, length: 142, features: "Artur Rojek" },
+  { title: "Panie, to Wyście!", album: "Jarmark", year: 2024, track: 2, length: 225, features: "Brak" },
+  { title: "Polskie Tango", album: "Jarmark", year: 2024, track: 3, length: 183, features: "Brak" },
+  { title: "Influenza", album: "Jarmark", year: 2024, track: 4, length: 268, features: "Gruby Mielzky" },
+  { title: "Nie Mam Czasu", album: "Jarmark", year: 2024, track: 5, length: 202, features: "CatchUp" },
+  { title: "Łańcuch II: Korek", album: "Jarmark", year: 2024, track: 6, length: 142, features: "Artur Rojek" },
+  { title: "Dwuzłotówki Dancing", album: "Jarmark", year: 2024, track: 7, length: 284, features: "Brak" },
+  { title: "POL Smoke", album: "Jarmark", year: 2024, track: 8, length: 213, features: "Brak" },
+  { title: "W.N.P.", album: "Jarmark", year: 2024, track: 9, length: 203, features: "Brak" },
+  { title: "1990s Utopia", album: "Jarmark", year: 2024, track: 10, length: 240, features: "Kacha z Coals" },
+  { title: "Szczękościsk", album: "Jarmark", year: 2024, track: 11, length: 238, features: "Brak" },
+  { title: "Łańcuch III: Korpo", album: "Jarmark", year: 2024, track: 12, length: 145, features: "Artur Rojek" },
+  { title: "Luxembourg", album: "Europa", year: 2025, track: 1, length: 196, features: "Brak" },
+  { title: "Grand Prix", album: "Europa", year: 2025, track: 2, length: 184, features: "Brak" },
+  { title: "Europa", album: "Europa", year: 2025, track: 3, length: 198, features: "Bedoes" },
+  { title: "Pireneje", album: "Europa", year: 2025, track: 4, length: 215, features: "Brak" },
+  { title: "Nie Ufam Sobie Sam", album: "Europa", year: 2025, track: 5, length: 155, features: "Brak" },
+  { title: "Big Pharma", album: "Europa", year: 2025, track: 6, length: 207, features: "Brak" },
+  { title: "Sztylet", album: "Europa", year: 2025, track: 7, length: 175, features: "Brak" },
+  { title: "Ortalion", album: "Europa", year: 2025, track: 8, length: 232, features: "Brak" },
+  { title: "WWA NIE Berlin", album: "Europa", year: 2025, track: 9, length: 220, features: "Szpaku" },
+  { title: "Pieniądz I Terror", album: "Europa", year: 2025, track: 10, length: 213, features: "OKI" },
+  { title: "Na Paryskie Getto Pada Deszcz", album: "Europa", year: 2025, track: 11, length: 222, features: "Borucci" },
+  { title: "Michael Essien Birthday Party", album: "Europa", year: 2025, track: 12, length: 257, features: "Brak" },
+  { title: "Toskania Outro", album: "Europa", year: 2025, track: 13, length: 307, features: "Brak" },
+  { title: "1‑800‑OŚWIECENIE", album: "1‑800‑OŚWIECENIE", year: 2026, track: 2, length: 170, features: "Brak" },
+  { title: "Cichosza", album: "1‑800‑OŚWIECENIE", year: 2026, track: 4, length: 206, features: "Otsochodzi, Zeppy Zep" },
+  { title: "Gelato", album: "1‑800‑OŚWIECENIE", year: 2026, track: 6, length: 195, features: "Brak" },
+  { title: "Może To Coś Zmieni?", album: "1‑800‑OŚWIECENIE", year: 2026, track: 8, length: 188, features: "Brak" },
+  { title: "Pakiet Platinium", album: "1‑800‑OŚWIECENIE", year: 2026, track: 9, length: 215, features: "Brak" },
+  { title: "Makarena Freestyle", album: "1‑800‑OŚWIECENIE", year: 2026, track: 11, length: 208, features: "Brak" },
+  { title: "Mix Sałat", album: "1‑800‑OŚWIECENIE", year: 2026, track: 13, length: 210, features: "Daria Zawiałow" },
+  { title: "Codziennie", album: "1‑800‑OŚWIECENIE", year: 2026, track: 15, length: 180, features: "Brak" },
+  { title: "1000 Dni Freestyle", album: "1‑800‑OŚWIECENIE", year: 2026, track: 17, length: 210, features: "Brak" },
+  { title: "Nametag", album: "1‑800‑OŚWIECENIE", year: 2026, track: 19, length: 234, features: "schafter, OKI" },
+  { title: "Całe Lata", album: "1‑800‑OŚWIECENIE", year: 2026, track: 21, length: 240, features: "Dawid Podsiadło" },
+  { title: "Niedziela", album: "1‑800‑OŚWIECENIE", year: 2026, track: 23, length: 200, features: "schafter" },
+  { title: "Main Stage Freestyle", album: "1‑800‑OŚWIECENIE", year: 2026, track: 25, length: 220, features: "Brak" },
+  { title: "EINECEIWŚO 008‑1", album: "1‑800‑OŚWIECENIE", year: 2026, track: 27, length: 260, features: "Brak" },
+  { title: "Plac Trzech Krzyży", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 2, length: 206, features: "The Returners" },
+  { title: "Latarnie wszędzie dawno zgasły", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 3, length: 211, features: "Brak" },
+  { title: "Pustoszeją sale kinowe", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 4, length: 172, features: "The Returners" },
+  { title: "Tramwaje", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 6, length: 167, features: "Brak" },
+  { title: "Odtrutka", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 7, length: 229, features: "The Returners" },
+  { title: "Trzykropki", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 8, length: 244, features: "Livka" },
+  { title: "Fotomodelki", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 10, length: 202, features: "The Returners" },
+  { title: "Zakochałem się pod apteką", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 11, length: 261, features: "Livka" },
+  { title: "Bez stresu", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 12, length: 256, features: "Livka" },
+  { title: "Frascati", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 14, length: 177, features: "Livka" },
+  { title: "Ratunku!", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 15, length: 224, features: "The Returners" },
+  { title: "Ostatni?", album: "Latarnie wszędzie dawno zgasły", year: 2027, track: 16, length: 259, features: "Brak" }
+    ];
+  }
 
-const target = songs[Math.floor(Math.random() * songs.length)];
-let attempts = 0;
+  songs.forEach(s=>s.cover=albumCovers[s.album]||'default.jpg');
 
-const datalist = document.getElementById("suggestions");
-songs.forEach(song => {
-  let option = document.createElement("option");
-  option.value = song.title;
-  datalist.appendChild(option);
+  target=songs[Math.floor(Math.random()*songs.length)];
+  document.getElementById('overlay').style.display='none';
+}
+
+const input=document.getElementById('search');
+const box=document.getElementById('suggestionsBox');
+
+input.addEventListener('input',()=>{
+  const q=input.value.toLowerCase(); box.innerHTML='';
+  songs.filter(s=>s.title.toLowerCase().includes(q)).slice(0,5).forEach(s=>{
+    const d=document.createElement('div');
+    d.textContent=s.title;
+    d.className='suggestion';
+    d.onclick=()=>{input.value=s.title;box.innerHTML='';};
+    box.appendChild(d);
+  });
 });
 
-function getClass(val, targetVal) {
-  if (val === targetVal) return "green";
-  if (Math.abs(val - targetVal) <= 2) return "yellow";
-  return "gray";
+function color(v,t,d){ if(v===t)return'green'; if(Math.abs(v-t)<=d)return'yellow'; return'gray'; }
+function arrow(v,t){ if(v===t)return''; return v<t?'⬆️':'⬇️'; }
+function time(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+
+function popup(msg){
+  const p=document.getElementById('popup');
+  p.textContent=msg;
+  p.style.display='block';
+  setTimeout(()=>p.style.display='none',5000);
 }
 
-function showPopup(message) {
-  const popup = document.getElementById('popup');
-  popup.textContent = message;
-  popup.style.display = 'block';
-  setTimeout(() => { popup.style.display = 'none'; }, 2000);
-}
+function guessSong(){
+  if(attempts>=8) return popup('Koniec gry');
 
-function getArrow(val, targetVal) {
-  if (val === targetVal) return '';
-  return val < targetVal ? '⬆️' : '⬇️';
-}
-
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-  const s = (seconds % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-}
-
-function guessSong() {
-  if (attempts >= 8) return showPopup("Koniec gry!");
-
-  const input = document.getElementById("search").value;
-  const song = songs.find(s => s.title === input);
-
-  if (!song) return showPopup("Wybierz piosenkę z listy!");
+  const song=songs.find(s=>s.title===input.value);
+  if(!song) return popup('Wybierz z listy');
 
   attempts++;
 
-  const row = document.createElement("tr");
-  row.innerHTML = `
-    <td class="${song.title === target.title ? 'green' : 'gray'}">${song.title}</td>
-    <td class="${getClass(song.year, target.year)}">${song.album} ${getArrow(song.year, target.year)}</td>
-    <td class="${getClass(song.track, target.track)}">${song.track} ${getArrow(song.track, target.track)}</td>
-    <td class="${getClass(song.length, target.length)}">${formatTime(song.length)} ${getArrow(song.length, target.length)}</td>
-    <td class="${song.features === target.features ? 'green' : 'gray'}">${song.features}</td>
+  const row=document.createElement('tr');
+  row.innerHTML=`
+    <td class="${song.title===target.title?'green':'gray'}">${song.title}</td>
+    <td class="album-cell ${color(song.year,target.year,1)}">
+      <img src="${song.cover}">
+      ${song.album} ${arrow(song.year,target.year)}
+    </td>
+    <td class="${color(song.track,target.track,2)}">${song.track} ${arrow(song.track,target.track)}</td>
+    <td class="${color(song.length,target.length,15)}">${time(song.length)} ${arrow(song.length,target.length)}</td>
+    <td class="${song.features===target.features?'green':'gray'}">${song.features}</td>
   `;
 
-  document.getElementById("tableBody").appendChild(row);
+  document.getElementById('tableBody').appendChild(row);
+  input.value='';
 
-  if (song.title === target.title) {
-    showPopup("Wygrałeś!");
-  } else if (attempts === 8) {
-    showPopup("Przegrałeś! Szukana piosenka to: " + target.title);
-  }
+  if(song.title===target.title) popup('Wygrałeś!');
+  else if(attempts===8) popup('Przegrałeś! '+target.title);
 }
 </script>
 
